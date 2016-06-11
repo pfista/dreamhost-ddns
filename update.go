@@ -17,9 +17,16 @@ var KEY = os.Getenv("DREAMHOST_DNS_API_KEY")
 
 func main() {
 	ip := ""
-	t := time.NewTicker(1 * time.Second)
+	records := getRecords()
+	for _, e := range records.Data {
+		if e.Type == "A" && e.Record == "home.pfista.io" {
+			ip = e.Value
+		}
+	}
+
+	t := time.NewTicker(5 * time.Second)
 	for now := range t.C {
-		fmt.Println("Checking DNS at ", now)
+		fmt.Println("Checking DNS at", now)
 		var latestIp = getIp()
 		if latestIp != ip {
 			ip = latestIp
@@ -35,23 +42,18 @@ func updateDNS(ip string) {
 			fmt.Println("Removing DNS A entry")
 			removeRecord("home.pfista.io", "A", e.Value)
 		}
-		if e.Type == "CNAME" && e.Record == "home.pfista.io" {
-			fmt.Println("Removing DNS CNAME entry")
-			removeRecord("home.pfista.io", "CNAME", e.Value)
-		}
 	}
 	addRecord("home.pfista.io", "A", ip)
 }
 
 func getIp() string {
-	resp, err := http.Get("https://icanhazip.com")
+	resp, err := http.Get("https://ipv4.icanhazip.com")
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Printf("IP: %s\n", body)
-	return string(body)
+	return strings.TrimSpace(string(body))
 }
 
 func getRecords() DreamhostResponse {
